@@ -28,6 +28,7 @@ import org.json.JSONObject;
 import android.app.Activity;
 import android.content.Intent;
 import android.database.Cursor;
+import android.provider.ContactsContract;
 import android.provider.ContactsContract.Contacts;
 import android.provider.ContactsContract.RawContacts;
 import android.util.Log;
@@ -48,6 +49,7 @@ public class ContactManager extends CordovaPlugin {
     public static final int NOT_SUPPORTED_ERROR = 5;
     public static final int PERMISSION_DENIED_ERROR = 20;
     private static final int CONTACT_PICKER_RESULT = 1000;
+    private static final int PHONE_PICKER_RESULT = 1001;
 
     /**
      * Constructor.
@@ -129,7 +131,8 @@ public class ContactManager extends CordovaPlugin {
             });
         }
         else if (action.equals("pickContact")) {
-            pickContactAsync();
+            final JSONObject options = args.get(0) == null ? null : args.getJSONObject(0);
+            pickContactAsync( options );
         }
         else {
             return false;
@@ -140,14 +143,33 @@ public class ContactManager extends CordovaPlugin {
     /**
      * Launches the Contact Picker to select a single contact.
      */
-    private void pickContactAsync() {
+    private void pickContactAsync( JSONObject options ) {
         final CordovaPlugin plugin = (CordovaPlugin) this;
-        Runnable worker = new Runnable() {
-            public void run() {
-                Intent contactPickerIntent = new Intent(Intent.ACTION_PICK, Contacts.CONTENT_URI);
-                plugin.cordova.startActivityForResult(plugin, contactPickerIntent, CONTACT_PICKER_RESULT);
+        boolean wantPhoneNumber = false;
+        if (options != null) {
+            try {
+                wantPhoneNumber = options.getBoolean("wantPhoneNumber");
+            } catch (JSONException e) {
+                // hasPhoneNumber was not specified so we assume the default is false.
             }
-        };
+        }
+
+        Runnable worker;
+        if( wantPhoneNumber ) {
+            worker = new Runnable() {
+                public void run() {
+                    Intent contactPickerIntent = new Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI);
+                    plugin.cordova.startActivityForResult(plugin, contactPickerIntent, PHONE_PICKER_RESULT);
+                }
+            };
+        } else {
+            worker = new Runnable() {
+                public void run() {
+                    Intent contactPickerIntent = new Intent(Intent.ACTION_PICK, Contacts.CONTENT_URI);
+                    plugin.cordova.startActivityForResult(plugin, contactPickerIntent, CONTACT_PICKER_RESULT);
+                }
+            };
+        }
         this.cordova.getThreadPool().execute(worker);
     }
     
@@ -186,6 +208,31 @@ public class ContactManager extends CordovaPlugin {
                 return;
             }
             this.callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, UNKNOWN_ERROR));
+        } else if (requestCode == PHONE_PICKER_RESULT) {
+            if (resultCode == Activity.RESULT_OK) {
+                Cursor c =  this.cordova.getActivity().getContentResolver().query(intent.getData(), null, null, null, null);
+                if (!c.moveToFirst()) {
+                    this.callbackContext.error("Error occured while retrieving phone number");
+                    return;
+                }
+                int  phoneIndex =c.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER);
+                String phoneNo = c.getString(phoneIndex);
+                c.close();
+
+                try {
+                    JSONObject contact = new JSONObject();
+                    contact.put("phoneNumbers", phoneNo);
+                    this.callbackContext.success(contact);
+                    return;
+                } catch (JSONException e) {
+                    Log.e(LOG_TAG, "JSON fail.", e);
+                }
+            } else if (resultCode == Activity.RESULT_CANCELED){
+                this.callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.NO_RESULT, UNKNOWN_ERROR));
+                return;
+            }
+            this.callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, UNKNOWN_ERROR));
         }
+
     }
 }

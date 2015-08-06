@@ -63,17 +63,18 @@ var contacts = {
      * This function picks contact from phone using contact picker UI
      * @returns new Contact object
      */
-    pickContact: function (successCB, errorCB) {
+    pickContact: function (successCB, errorCB, options) {
 
-        argscheck.checkArgs('fF', 'contacts.pick', arguments);
+        argscheck.checkArgs('fFO', 'contacts.pick', arguments);
 
+        options = options || {wantPhoneNumber: true}
         var win = function (result) {
             // if Contacts.pickContact return instance of Contact object
             // don't create new Contact object, use current
             var contact = result instanceof Contact ? result : contacts.create(result);
             successCB(contact);
         };
-        exec(win, errorCB, "Contacts", "pickContact", []);
+        exec(win, errorCB, "Contacts", "pickContact", [options]);
     },
 
     /**

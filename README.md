@@ -16,7 +16,13 @@
 #         specific language governing permissions and limitations
 #         under the License.
 -->
- 
+
+# Fork of standard cordova plugin with addition of the option to retrieve phone number on Android
+
+That fork might not be usefull to anybody, it change the default behavior.
+By default, retrieving phone number and not all contacts, it's opening the contact list with only contact having a phone number and return a "fake" contact with only the phone number selected. Might not be usefull outside the specific case i'm using it.
+To use the "normal" behaviour, pass a third argument after the ok/KO callback, { wantPhoneNumber:false}
+
 # cordova-plugin-contacts
 
 This plugin defines a global `navigator.contacts` object, which provides access to the device contacts database.
