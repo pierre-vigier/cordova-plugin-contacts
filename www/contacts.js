@@ -74,7 +74,10 @@ var contacts = {
             var contact = result instanceof Contact ? result : contacts.create(result);
             successCB(contact);
         };
-        exec(win, errorCB, "Contacts", "pickContact", [options]);
+        var params = [];
+        if( device.platform === 'Android')
+            params = [options];
+        exec(win, errorCB, "Contacts", "pickContact", params);
     },
 
     /**
